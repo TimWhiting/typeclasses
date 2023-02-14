@@ -49,7 +49,9 @@ fun assume(evaluate:bool = False)
   ForAll([alphaT], TPred([(eqI, createEqType(tAlpha))], TFun(tAlpha, tBool))).greater(TFun(tFloat, tBool).scheme, assums).show.println()
 
   createEqFun(App(eqE, ETup([eInt(1), eInt(1)]))).inferEval(evaluate)
+  createEqFun(App(eqE, ETup([eInt(1), eInt(2)]))).inferEval(evaluate)
   createEqFun(App(eqE, ETup([eChar('a'), eChar('a')]))).inferEval(evaluate)
+  createEqFun(App(eqE, ETup([eChar('a'), eChar('e')]))).inferEval(evaluate)
 
 
 fun eqExample()
