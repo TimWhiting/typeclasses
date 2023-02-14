@@ -27,8 +27,8 @@ fun doInfer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exn> (ex
   with handleExit // Custom error handling to report error from innermost expression
   with genTypeVars // Generate fresh type variables
   val (res, sub) = infer(x, env, assums)
-  // trace(sub.show)
-  (applyAll(res, sub), sub)
+  trace(sub.show)
+  (applyAll(applyAll(applyAll(res, sub), sub), sub), sub)
   // (res, sub)
 
 fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,newType> (expr, subst)
@@ -130,14 +130,14 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
               (res, sub.compose(sub1))
             _ -> throw("Cannot instantiate " ++ i.name ++ " with " ++ e0Ty.show)
         _ -> throw("Cannot instantiate " ++ i.name ++ " with " ++ c.show)
-  // match y.fst.typePredOf
-  //   Just(TPred(Cons(_, _))) -> trace("Has Predicated type" ++ y.fst.show)
-  //   Nothing -> ()
+  match y.fst.typePredOf
+    Just(TPred(Cons(_, _))) -> trace("Has Predicated type" ++ y.fst.show)
+    Nothing -> ()
   match y.fst.typeSchemeOf
     Just(ForAll(_, TPred(Cons(pred, _)))) ->
       match assums.find(fn(a) inst(a, pred))
         Just(i) ->
-          // trace("Found match for " ++ y.fst.show ++ " i " ++ i.show) 
+          trace("Found match for " ++ y.fst.show ++ " i " ++ i.show) 
           (Lam(i.ident, y.fst, Nothing), y.snd)
         Nothing -> y
     _ -> y
@@ -148,11 +148,11 @@ fun applyAll(e: expr, subs: subst): div expr
     ETup(v,t) -> ETup(v.map(fn (vi) applyAll(vi, subs)), apply(subs, t))
     EVar(x1,t) -> EVar(x1, apply(subs, t))
     PrimOp(a,b,c) -> PrimOp(a,b,apply(subs,c))
-    Lam(i, e1, t) -> Lam(i, applyAll(e1, subs), apply(subs, t))
+    Lam(i, e1, t) -> Lam(apply(subs,i), applyAll(e1, subs), apply(subs, t))
     App(f, v, t) -> App(applyAll(f, subs), applyAll(v, subs), apply(subs, t))
-    Let(i, e1, b, t) -> Let(i, applyAll(e1, subs), applyAll(b, subs), apply(subs, t))
-    Over(i, c, e1) -> Over(i, c, applyAll(e1, subs))
-    Inst(i, c, e0, e1) -> Inst(i, c, applyAll(e0, subs), applyAll(e1, subs))
+    Let(i, e1, b, t) -> Let(apply(subs,i), applyAll(e1, subs), applyAll(b, subs), apply(subs, t))
+    Over(i, c, e1) -> Over(apply(subs,i), apply(subs, c), applyAll(e1, subs))
+    Inst(i, c, e0, e1) -> Inst(apply(subs,i), apply(subs, c), applyAll(e0, subs), applyAll(e1, subs))
 
 fun (===)(t1: typeScheme, t2: typeScheme): <div,newType> bool
   match (t1, t2)
@@ -263,6 +263,9 @@ fun replace(t: ttype, l: list<(typeVar, ttype)>): div ttype
         Nothing -> TVar(a)
     ErrorT -> ErrorT
 
+fun apply(s: subst, i: ident): div ident
+  s.foldl(i, fn(acc:ident, x:(typeVar, typeScheme)) apply(x, acc))
+
 // Apply replaces type variables in the predicates and types with the type from the substitution map
 fun apply(s: subst, t: maybe<typeScheme>): div maybe<typeScheme>
   match t
@@ -271,6 +274,11 @@ fun apply(s: subst, t: maybe<typeScheme>): div maybe<typeScheme>
   
 fun apply(s: subst, env: typeEnv): div typeEnv
   env.map(fn(x) (x.fst, apply(s, x.snd)))
+
+fun apply(s: (typeVar, typeScheme), t: ident): div ident
+  match t
+    Ident(a, Just(b)) -> Ident(a, Just(apply(s, b)))
+    _ -> t
 
 fun apply(s: (typeVar, typeScheme), t: typeScheme): div typeScheme
   t.map(fn(x) apply(s, x))
