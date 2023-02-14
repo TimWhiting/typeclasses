@@ -139,9 +139,10 @@ fun freeVars(t: typeScheme): list<typeVar>
     match x
       TVar(a) -> 
         match t.vars.find(fn(xx) xx == a) 
-          Nothing -> x
-          Just(aa) -> 
-            res := Cons(aa, res)
+          Nothing -> 
+            res := Cons(a, res)
+            x
+          Just(_) -> 
             x
       _ -> x
   res
@@ -166,3 +167,9 @@ fun map(t: typeScheme, f: (ttype) -> e ttype): e typeScheme
 fun map(t: typePred, f: (ttype) -> e ttype): e typePred
   match t
     TPred(preds, t1) -> TPred(preds.map(fn(x) (x.fst, f(x.snd))), f(t1))
+
+fun removeAll(s: subst, l: list<typeVar>): subst
+  s.filter(fn(x) ! l.contains(x.fst, fn(ss, xx) ss == xx))
+
+fun contains(l: list<a>, a: a, equal: (a,a) -> e bool): e bool
+  l.foldl(False, fn(acc, x) x.equal(a) || acc)

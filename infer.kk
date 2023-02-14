@@ -68,7 +68,7 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
       val (e1, s1) = infer(e, newEnv, assums)
       val newTv = apply(s1, tv.scheme)
       val t = TFun(newTv.tp.tp, typeOf(e1).default(ErrorT))
-      (Lam(i, e1, Just(t.scheme)), s1)
+      (Lam(apply(s1, i), e1, Just(t.scheme)), s1)
     // Comb: checked
     App(f, v, _) ->
       val tv = nextTypeVar()
@@ -86,7 +86,6 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
               //   PrimOp() -> trace("Applying primitive operation " ++ f.show ++ " with inferred type " ++ f1.show ++ " to " ++ rh.show ++ " with type " ++ type2.show)
               //   _ -> trace("Applying operation " ++ f1.show ++ " to " ++ rh.show ++ " with type " ++ type2.show)
               val s3 = unify(apply(s2, type1), TFun(type2.typeOf, tv).scheme)
-              // trace("Compose app\n" ++ s1.show ++ "\ns2 " ++ s2.show ++ "\ns3" ++ s3.show)
               val finalSub = s1.compose(s2).compose(s3) // TODO: Is this the right order?
 
               val t = apply(finalSub, tv.scheme)
@@ -105,7 +104,8 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
       val env1 = Cons((i, e1Ty), env)
       val env2 = apply(s1, env1)
       val (b1, s2) = infer(b, env2, assums)
-      (Let(i, e1, b1, b1.typeSchemeOf), s1.compose(s2))
+      val resSub = s1.compose(s2)
+      (Let(apply(resSub, i), e1, b1, b1.typeSchemeOf), resSub)
     // Over: checked
     Over(i, c, e) ->
       infer(e, env, Cons(Overloaded(i,c), assums)) // The translation replaces Over with the translation of e
@@ -125,9 +125,10 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
             Just(_) -> 
               val newAssums = Cons(Instance(i, c, newIdent), assums)
               val (newE1, sub1) = infer(e1, env, newAssums)
+              val resSub = sub.compose(sub1)
               // Convert to a let with a translated identifier
-              val res = Let(newIdent, newE0.updateType(Just(e0Ty)), newE1, newE1.typeSchemeOf)
-              (res, sub.compose(sub1))
+              val res = Let(apply(resSub, newIdent), newE0.updateType(Just(e0Ty)), newE1, newE1.typeSchemeOf)
+              (res, resSub)
             _ -> throw("Cannot instantiate " ++ i.name ++ " with " ++ e0Ty.show)
         _ -> throw("Cannot instantiate " ++ i.name ++ " with " ++ c.show)
   match y.fst.typePredOf
@@ -212,7 +213,7 @@ fun unify(t1: typePred, t2: typePred): <div,exn> subst
 // TODO: I need to be consistent about which side to add to the substitution
 fun unify(t1: ttype, t2: ttype): <div,exn> subst
   match (t1, t2)
-    (TVar(a), TVar(b)) -> if a == b then [] else [(a, t2.scheme), (b, t1.scheme)]
+    (TVar(a), TVar(b)) -> if a == b then [] else [(a, t2.scheme)]
     (TVar(a), _) -> 
       match t2.freeVars([]).find(fn (x) x == a)
         Just(_) -> throw("Occurs check failed")
@@ -281,10 +282,10 @@ fun apply(s: (typeVar, typeScheme), t: ident): div ident
     _ -> t
 
 fun apply(s: (typeVar, typeScheme), t: typeScheme): div typeScheme
-  t.map(fn(x) apply(s, x))
+  t.map(fn(x) apply([s].removeAll(t.vars), x))
 
 fun apply(s: subst, t: typeScheme): div typeScheme
-  s.foldl(t, fn(acc:typeScheme, x:(typeVar, typeScheme)) apply(x, acc))
+  s.removeAll(t.vars).foldl(t, fn(acc:typeScheme, x:(typeVar, typeScheme)) apply(x, acc))
 
 fun apply(s: subst, t: ttype): div ttype
   s.foldl(t, fn(acc:ttype, x:(typeVar, typeScheme)) apply(x, acc))
@@ -299,15 +300,7 @@ fun apply(s: (typeVar, typeScheme), t: ttype): div ttype
 
 fun compose(s1: subst, s2: subst): div subst
   val s2' = s2.map(fn(x) (x.fst, apply(s1, x.snd)))
-  // val s1' = s1.map(fn(x) (x.fst, apply(s2', x.snd)))
-  s2' ++ s1 // Add s1 after s2 so that s1 takes precedence
-  // if s1.is-empty || s2.is-empty then res else
-  //   trace("Composing " ++ s1.show ++ " with " ++ s2.show)
-  //   trace("Resulting in " ++ res.show)
-  //   res
-
-fun contains(l: list<a>, a: a, equal: (a,a) -> e bool): e bool
-  l.foldl(False, fn(acc, x) x.equal(a) || acc)
+  s2' ++ s1.removeAll(s2'.map(fn(x) x.fst))
 
 fun greater(t1: typeScheme, t2: typeScheme, assums: assumptions): <exn,div> bool
   val fr = t1.freeVars
