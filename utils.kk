@@ -17,27 +17,16 @@ fun tupleT(types: list<ttype>): ttype
 // Get typeScheme from expression
 fun typeOf(e: expr): maybe<ttype>
   match e
-    ELit(_, t) -> Just(t.typeOf)
-    ETup(_, t) -> Just(t.typeOf)
-    EVar(_, t) -> Just(t.typeOf)
-    App(_, _, t) -> Just(t.typeOf)
-    Lam(_, _, t) -> Just(t.typeOf)
-    Let(_, _, _, t) -> Just(t.typeOf)
-    PrimOp(_, _, t) -> Just(t.typeOf)
-    _ -> Nothing
-
-fun typePredOf(e: expr): maybe<typePred>
-  match e
-    ELit(_, t) -> Just(t.typePred)
-    ETup(_, t) -> Just(t.typePred)
-    EVar(_, t) -> Just(t.typePred)
-    App(_, _, t) -> Just(t.typePred)
-    Lam(_, _, t) -> Just(t.typePred)
-    Let(_, _, _, t) -> Just(t.typePred)
+    ELit(_, Just(t)) -> Just(t.tp)
+    ETup(_, Just(t)) -> Just(t.tp)
+    EVar(_, Just(t)) -> Just(t.tp)
+    App(_, _, Just(t)) -> Just(t.tp)
+    Lam(_, _, Just(t)) -> Just(t.tp)
+    Let(_, _, _, Just(t)) -> Just(t.tp)
     PrimOp(_, _, t) -> Just(t.tp)
     _ -> Nothing
 
-fun typeSchemeOf(e: expr): maybe<typeScheme>
+fun typePredOf(e: expr): maybe<typePred>
   match e
     ELit(_, t) -> t
     ETup(_, t) -> t
@@ -48,7 +37,8 @@ fun typeSchemeOf(e: expr): maybe<typeScheme>
     PrimOp(_, _, t) -> Just(t)
     _ -> Nothing
 
-fun updateType(e: expr, t: maybe<typeScheme>): expr
+
+fun updateType(e: expr, t: maybe<typePred>): expr
   match e
     ELit(l, _) -> ELit(l, t)
     ETup(l, _) -> ETup(l, t)
@@ -58,9 +48,9 @@ fun updateType(e: expr, t: maybe<typeScheme>): expr
     Let(l, r, b, _) -> Let(l, r, b, t)
     _ -> e
 
-fun getPred(t: maybe<typeScheme>): maybe<typeScheme>
+fun getPred(t: maybe<typePred>): maybe<typeScheme>
   match t
-    Just(ForAll(_, TPred(Cons((_, t1), _), _))) -> Just(ForAll([], TPred([], t1)))
+    Just(TPred(Cons((_, t1), _), _)) -> Just(ForAll([], TPred([], t1)))
     _ -> Nothing
 
 fun removePred(i: ident): ident
@@ -100,16 +90,16 @@ fun pred(t: ttype, vars: list<(ident, ttype)> = []): typePred
 
 // Helper functions for creating expressions
 fun eInt(i: int): expr
-  ELit(IntL(i), Just(tInt.scheme))
+  ELit(IntL(i), Just(tInt.pred))
 
 fun eChar(c: char): expr
-  ELit(CharL(c), Just(tChar.scheme))
+  ELit(CharL(c), Just(tChar.pred))
 
 fun eBool(c: bool): expr
-  ELit(BoolL(c), Just(tBool.scheme))
+  ELit(BoolL(c), Just(tBool.pred))
 
 fun eFloat(c: float64): expr
-  ELit(FloatL(c), Just(tFloat.scheme))
+  ELit(FloatL(c), Just(tFloat.pred))
 
 fun ident(name: string): ident
   Ident(name)

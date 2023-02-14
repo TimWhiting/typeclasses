@@ -27,13 +27,13 @@ struct ident
   signature: maybe<typeScheme> = Nothing;
 
 rec type expr
-  ELit(v: literal, tp: maybe<typeScheme> = Nothing)
-  ETup(e0: list<expr>, tp: maybe<typeScheme> = Nothing)
-  EVar(ident: ident, tp: maybe<typeScheme> = Nothing)
-  App(e0: expr, e1: expr, tp: maybe<typeScheme> = Nothing)
-  Lam(ident: ident, e: expr, tp: maybe<typeScheme> = Nothing)
-  PrimOp(ident: ident, e: (evalue) -> exn evalue, tp: typeScheme)
-  Let(ident: ident, e0: expr, e1: expr, tp: maybe<typeScheme> = Nothing)
+  ELit(v: literal, tp: maybe<typePred> = Nothing)
+  ETup(e0: list<expr>, tp: maybe<typePred> = Nothing)
+  EVar(ident: ident, tp: maybe<typePred> = Nothing)
+  App(e0: expr, e1: expr, tp: maybe<typePred> = Nothing)
+  Lam(ident: ident, e: expr, tp: maybe<typePred> = Nothing)
+  PrimOp(ident: ident, e: (evalue) -> exn evalue, tp: typePred)
+  Let(ident: ident, e0: expr, e1: expr, tp: maybe<typePred> = Nothing)
   Over(ident: ident, cond: typeScheme, e: expr)
   Inst(ident: ident, cond: typeScheme, e0: expr, e1: expr);
 
@@ -50,7 +50,7 @@ alias environment = list<(ident, evalue)>
 
 alias typeEnv = list<(ident, typeScheme)>
 
-alias subst = list<(typeVar, typeScheme)>
+alias subst = list<(typeVar, typePred)>
 
 type assumption
   Overloaded(ident: ident, t: typeScheme)
@@ -89,6 +89,11 @@ fun show(ForAll(vars, t): typeScheme): div string
   else "forall " ++ vars.map(fn(x) x.name).join(",") ++ ". " ++ t.show
 
 fun show(t: maybe<typeScheme>): div string
+  match t
+    Just(t0) -> t0.show
+    Nothing -> "??"
+
+fun show(t: maybe<typePred>): div string
   match t
     Just(t0) -> t0.show
     Nothing -> "??"

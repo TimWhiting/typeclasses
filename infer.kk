@@ -45,22 +45,22 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
       val (v1, s1) = v.map(fn (vi) infer(vi, env, assums)).unzip
       val t = v1.map(fn (vi) typeOf(vi).default(ErrorT))
       // trace("Compose tuple " ++ t.foldl("", fn (acc, a) acc ++ a.show ++ " "))
-      (ETup(v1, Just(tupleT(t).scheme)), s1.foldl([], fn (acc, a) acc.compose(a)))
+      (ETup(v1, Just(tupleT(t).pred)), s1.foldl([], fn (acc, a) acc.compose(a)))
     EVar(x1,_) -> 
       match env.find(fn(a) a.fst.name == x1.name)
-        Just((_, t)) -> (EVar(x1, Just(t.instantiate().scheme)), [])
+        Just((_, t)) -> (EVar(x1, Just(t.instantiate())), [])
         Nothing -> 
           match assums.find(fn(a) over(a, x1))
             Just(Overloaded(i, t)) -> 
               // trace("Used overloaded identifier for " ++ x.show ++ " with type " ++ t.show)
-              val xt = t.instantiatePred(i).scheme
+              val xt = t.instantiatePred(i)
               // trace("Instantiated to " ++ xt.show)
               (EVar(x1, Just(xt)), [])
             Nothing -> throw("Unbound variable " ++ x1.name ++ " in environment " ++ env.show)
             _ -> throw("Did not find instance")
     // Needed to instantiate in order to allow for type variables in a primitive op to unify with different types 
     // This would happen in the var case if the operations were variables. 
-    PrimOp(a,b,c) -> (PrimOp(a,b,c.instantiate().scheme), [])
+    PrimOp(a,b,c) -> (PrimOp(a,b,c.instantiateBase()), [])
     // Abs: checked
     Lam(i, e, _) -> 
       val tv = nextTypeVar()
@@ -68,31 +68,31 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
       val (e1, s1) = infer(e, newEnv, assums)
       val newTv = apply(s1, tv.scheme)
       val t = TFun(newTv.tp.tp, typeOf(e1).default(ErrorT))
-      (Lam(apply(s1, i), e1, Just(t.scheme)), s1)
+      (Lam(apply(s1, i), e1, Just(t.pred)), s1)
     // Comb: checked
     App(f, v, _) ->
       val tv = nextTypeVar()
       // TODO: Handle explicit type annotation with predicates
       val (f1, s1) = infer(f, env, assums)
-      match typeSchemeOf(f1)
+      match typePredOf(f1)
         Nothing -> throw("Cannot infer type of function " ++ f1.show)
         Just(type1) -> 
           val env1 = apply(s1, env)
           val (rh, s2) = infer(v, env1, assums)
-          match typeSchemeOf(rh)
+          match typePredOf(rh)
             Nothing -> throw("Cannot infer type of argument " ++ rh.show)
             Just(type2) -> 
               // match f
               //   PrimOp() -> trace("Applying primitive operation " ++ f.show ++ " with inferred type " ++ f1.show ++ " to " ++ rh.show ++ " with type " ++ type2.show)
               //   _ -> trace("Applying operation " ++ f1.show ++ " to " ++ rh.show ++ " with type " ++ type2.show)
-              val s3 = unify(apply(s2, type1), TFun(type2.typeOf, tv).scheme)
+              val s3 = unify(apply(s2, type1), TFun(type2.tp, tv).pred)
               val finalSub = s1.compose(s2).compose(s3) // TODO: Is this the right order?
 
-              val t = apply(finalSub, tv.scheme)
-              val newFT = match f1.typeSchemeOf
+              val t = apply(finalSub, tv.pred)
+              val newFT = match f1.typePredOf
                 Just(f2) -> Just(apply(finalSub, f2))
-                Nothing -> f1.typeSchemeOf
-              val newRH = rh.updateType(apply(finalSub, Just(rh.typeSchemeOf.default(ErrorT.scheme))))
+                Nothing -> f1.typePredOf
+              val newRH = rh.updateType(apply(finalSub, Just(rh.typePredOf.default(ErrorT.pred))))
               // match f
               //   PrimOp() -> trace("Unified to " ++ newFT.show ++ " applied to " ++ newRH.typeSchemeOf.show ++ " with result type " ++ t.show ++ "\n")
               //   _ -> trace("Unified to " ++ newFT.show ++ " applied to " ++ newRH.typeSchemeOf.show ++ " with result type " ++ t.show ++ "\n")
@@ -105,7 +105,7 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
       val env2 = apply(s1, env1)
       val (b1, s2) = infer(b, env2, assums)
       val resSub = s1.compose(s2)
-      (Let(apply(resSub, i), e1, b1, b1.typeSchemeOf), resSub)
+      (Let(apply(resSub, i), e1, b1, b1.typePredOf), resSub)
     // Over: checked
     Over(i, c, e) ->
       infer(e, env, Cons(Overloaded(i,c), assums)) // The translation replaces Over with the translation of e
@@ -127,15 +127,13 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
               val (newE1, sub1) = infer(e1, env, newAssums)
               val resSub = sub.compose(sub1)
               // Convert to a let with a translated identifier
-              val res = Let(apply(resSub, newIdent), newE0.updateType(Just(e0Ty)), newE1, newE1.typeSchemeOf)
+              val res = Let(apply(resSub, newIdent), newE0.updateType(Just(e0Ty.tp)), newE1, newE1.typePredOf)
               (res, resSub)
             _ -> throw("Cannot instantiate " ++ i.name ++ " with " ++ e0Ty.show)
         _ -> throw("Cannot instantiate " ++ i.name ++ " with " ++ c.show)
   match y.fst.typePredOf
-    Just(TPred(Cons(_, _))) -> trace("Has Predicated type" ++ y.fst.show)
-    Nothing -> ()
-  match y.fst.typeSchemeOf
-    Just(ForAll(_, TPred(Cons(pred, _)))) ->
+    Just(TPred(Cons(pred, _))) ->
+      trace("Has Predicated type" ++ y.fst.show)
       match assums.find(fn(a) inst(a, pred))
         Just(i) ->
           trace("Found match for " ++ y.fst.show ++ " i " ++ i.show) 
@@ -160,7 +158,7 @@ fun (===)(t1: typeScheme, t2: typeScheme): <div,newType> bool
     (ForAll(aas, a), ForAll(bs, b)) ->
       if aas.length != bs.length then False else
         val subs = aas.zip(bs).foldl([]) fn(acc, x)
-          val y = nextTypeVar().scheme
+          val y = nextTypeVar().pred
           Cons((x.fst, y), Cons((x.snd, y), acc))
         apply(subs, a.scheme) == apply(subs, b.scheme)
 
@@ -213,21 +211,21 @@ fun unify(t1: typePred, t2: typePred): <div,exn> subst
 // TODO: I need to be consistent about which side to add to the substitution
 fun unify(t1: ttype, t2: ttype): <div,exn> subst
   match (t1, t2)
-    (TVar(a), TVar(b)) -> if a == b then [] else [(a, t2.scheme)]
+    (TVar(a), TVar(b)) -> if a == b then [] else [(a, t2.pred)]
     (TVar(a), _) -> 
       match t2.freeVars([]).find(fn (x) x == a)
         Just(_) -> throw("Occurs check failed")
-        Nothing -> [(a, t2.scheme)]
+        Nothing -> [(a, t2.pred)]
     (_, TVar(a)) -> 
       match t1.freeVars([]).find(fn (x) x == a)
         Just(_) -> throw("Occurs check failed")
-        Nothing -> [(a, t1.scheme)]
+        Nothing -> [(a, t1.pred)]
     (TApp(a, b), TApp(c, d)) -> 
       if a == c then b.zip(d).map(fn (x) unify(x.fst, x.snd)).foldl([], fn (acc, x) acc.compose(x))
       else throw("Cannot unify " ++ t1.show() ++ " with " ++ t2.show())
     (TFun(a, b), TFun(c, d)) -> 
       val subst = unify(a, c)
-      unify(apply(subst, b), apply(subst, d)).compose(subst)
+      subst.compose(unify(apply(subst, b), apply(subst, d)))
     (ErrorT, _) -> []
     (_, ErrorT) -> []
     _ -> throw("Cannot unify " ++ t1.show() ++ " with " ++ t2.show())
@@ -243,6 +241,12 @@ fun instantiate(t: typeScheme): <div,newType> typePred
       val vars' = vars.map(fn (x) nextTypeVar())
       val s = vars.zip(vars').map(fn (x) (x.fst, x.snd))
       t1.map(fn(t2) t2.replace(s))
+
+fun instantiateBase(t: typePred): <div,newType> typePred
+  val fvs = t.freeVars([])
+  val vars' = fvs.map(fn (x) nextTypeVar())
+  val s = fvs.zip(vars').map(fn (x) (x.fst, x.snd))
+  t.map(fn(t2) t2.replace(s))
 
 fun instantiatePred(t: typeScheme, n: ident): <div,newType> typePred
   match t
@@ -265,10 +269,15 @@ fun replace(t: ttype, l: list<(typeVar, ttype)>): div ttype
     ErrorT -> ErrorT
 
 fun apply(s: subst, i: ident): div ident
-  s.foldl(i, fn(acc:ident, x:(typeVar, typeScheme)) apply(x, acc))
+  s.foldl(i, fn(acc:ident, x:(typeVar, typePred)) apply(x, acc))
 
 // Apply replaces type variables in the predicates and types with the type from the substitution map
 fun apply(s: subst, t: maybe<typeScheme>): div maybe<typeScheme>
+  match t
+    Just(a) -> Just(apply(s, a))
+    Nothing -> Nothing
+
+fun apply(s: subst, t: maybe<typePred>): div maybe<typePred>
   match t
     Just(a) -> Just(apply(s, a))
     Nothing -> Nothing
@@ -276,24 +285,30 @@ fun apply(s: subst, t: maybe<typeScheme>): div maybe<typeScheme>
 fun apply(s: subst, env: typeEnv): div typeEnv
   env.map(fn(x) (x.fst, apply(s, x.snd)))
 
-fun apply(s: (typeVar, typeScheme), t: ident): div ident
+fun apply(s: (typeVar, typePred), t: ident): div ident
   match t
     Ident(a, Just(b)) -> Ident(a, Just(apply(s, b)))
     _ -> t
 
-fun apply(s: (typeVar, typeScheme), t: typeScheme): div typeScheme
+fun apply(s: (typeVar, typePred), t: typePred): div typePred
+  t.map(fn(x) apply(s, x))
+
+fun apply(s: subst, t: typePred): div typePred
+  s.foldl(t, fn(acc:typePred, x:(typeVar, typePred)) apply(x, acc))
+
+fun apply(s: (typeVar, typePred), t: typeScheme): div typeScheme
   t.map(fn(x) apply([s].removeAll(t.vars), x))
 
 fun apply(s: subst, t: typeScheme): div typeScheme
-  s.removeAll(t.vars).foldl(t, fn(acc:typeScheme, x:(typeVar, typeScheme)) apply(x, acc))
+  s.removeAll(t.vars).foldl(t, fn(acc:typeScheme, x:(typeVar, typePred)) apply(x, acc))
 
 fun apply(s: subst, t: ttype): div ttype
-  s.foldl(t, fn(acc:ttype, x:(typeVar, typeScheme)) apply(x, acc))
+  s.foldl(t, fn(acc:ttype, x:(typeVar, typePred)) apply(x, acc))
 
-fun apply(s: (typeVar, typeScheme), t: ttype): div ttype
+fun apply(s: (typeVar, typePred), t: ttype): div ttype
   match t
     TApp(a, Nil) -> TApp(a, Nil)
-    TVar(a) -> if a == s.fst then s.snd.typeOf else TVar(a)
+    TVar(a) -> if a == s.fst then s.snd.tp else TVar(a)
     TApp(a, b) -> TApp(a, b.map(fn (x) apply(s, x)))
     ErrorT -> ErrorT
     TFun(t0, t1) -> TFun(apply(s, t0), apply(s, t1))

@@ -5,7 +5,7 @@ import primitives
 import infer
 
 val eqI = Ident("eq")
-val eqE = EVar(eqI, Just(createEqType(tAlpha).scheme))
+val eqE = EVar(eqI, Just(createEqType(tAlpha).pred))
 
 val pE = eVar("p")
 val qE = eVar("q")
@@ -117,7 +117,7 @@ fun main()
   // notrace()
   // primitiveTests()
   // inferTests()
-  // assume(True)
-  eqExample()
+  assume(True)
+  // eqExample()
   ()
 
