@@ -64,6 +64,8 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
     // Abs: checked
     Lam(i, e, _) -> 
       val tv = nextTypeVar()
+      // val env' = env.filter(fn(a) !(a.fst == i))
+      // val newEnv = Cons((i, tv.scheme), env')
       val newEnv = Cons((i, tv.scheme), env)
       val (e1, s1) = infer(e, newEnv, assums)
       val newTv = apply(s1, tv.scheme)
@@ -86,6 +88,9 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
               //   PrimOp() -> trace("Applying primitive operation " ++ f.show ++ " with inferred type " ++ f1.show ++ " to " ++ rh.show ++ " with type " ++ type2.show)
               //   _ -> trace("Applying operation " ++ f1.show ++ " to " ++ rh.show ++ " with type " ++ type2.show)
               val s3 = unify(apply(s2, type1), TFun(type2.tp, tv).pred)
+              // val finalSub = s3.compose(s2).compose(s1) // TODO: Is this the right order?
+              // val t = apply(s3, tv.pred)
+              // (App(f1, rh, Just(t)), finalSub)
               val finalSub = s1.compose(s2).compose(s3) // TODO: Is this the right order?
 
               val t = apply(finalSub, tv.pred)
@@ -100,6 +105,10 @@ fun infer(x: expr, env: typeEnv = [], assums: assumptions = []): <div,exit,exn,n
     // Let: checked
     Let(i, e, b, _) ->
       val (e1, s1) = infer(e, env, assums)
+      // val env' = env.filter(fn(a) !(a.fst == i))
+      // val e1Ty = e1.typePredOf.default(ErrorT.pred).generalize(apply(s1, env'))
+      // val env1 = Cons((i, e1Ty), env)
+      // val (b1, s2) = infer(b, env1, assums)
       val e1Ty = e1.typePredOf.default(ErrorT.pred).generalize(apply(s1, env))
       val env1 = Cons((i, e1Ty), env)
       val env2 = apply(s1, env1)
