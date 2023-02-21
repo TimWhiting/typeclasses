@@ -60,12 +60,12 @@ fun doNeg(v: evalue): exn evalue
 val eFst = PrimOp(Ident("fst"), doFst)
 val eSnd = PrimOp(Ident("snd"), doSnd)
 val eThd = PrimOp(Ident("thd"), doThd)
-val eOr = PrimOp(Ident("or"), doOr)
-val eAnd = PrimOp(Ident("and"), doAnd)
-val eEq = PrimOp(Ident("eq"), doEq)
-val eAdd = PrimOp(Ident("eAdd"), doAdd)
-val eMult = PrimOp(Ident("eMult"), doMult)
-val eNeg = PrimOp(Ident("eNeg"), doNeg)
+val eOr = PrimOp(Ident("||"), doOr)
+val eAnd = PrimOp(Ident("&&"), doAnd)
+val eEq = PrimOp(Ident("=="), doEq)
+val eAdd = PrimOp(Ident("+"), doAdd)
+val eMult = PrimOp(Ident("*"), doMult)
+val eNeg = PrimOp(Ident("-"), doNeg)
 val primExprs = [eFst, eSnd, eThd, eOr, eAnd, eEq, eAdd, eMult, eNeg]
 
 fun lookupPrim(id2: ident): maybe<expr>

@@ -26,3 +26,10 @@ fun getBool(b: evalue): exn bool
   match b
     Bool(bl) -> bl
     _ -> throw("Not a bool")
+
+fun upsert(e: list<(ident, int)>, x: ident, a: int): list<(ident, int)>
+  val removed = e.filter(fn (xi) unsafe-total(fn() !(xi.fst == x)))
+  Cons((x, a), removed)
+
+fun getAddr(e: list<(ident, int)>, x: ident): exn maybe<int>
+  e.find(fn(xi) unsafe-total(fn() xi.fst == x)).map(fn(xi) xi.snd)
