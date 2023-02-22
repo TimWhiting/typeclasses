@@ -2,7 +2,7 @@ import datastructure
 import utils
 import primitives
 
-alias primop<v> = (v) -> exn v
+alias primop<v> = (v) -> failure v
 
 effect store<a,v>
   fun alloc(x: ident): a // Address
@@ -30,7 +30,10 @@ effect abst<a,v>
   fun closV(x: ident, e: expr, cenv: list<(ident, a)>): v
   fun getClosure(v: v): evalue
 
-alias interp<a,v> = <store<a,v>, env<a,v>, abst<a,v>, exprInfo, pure>
+alias interp<a,v> = <store<a,v>, env<a,v>, abst<a,v>, failure, exprInfo, pure>
+
+alias faildiv = <failure,div>
+alias purefail = <pure,failure>
 
 fun eval(x: expr): <interp<int,v>> v
   doSomething(x)

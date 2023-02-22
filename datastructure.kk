@@ -18,7 +18,6 @@ type expr
   Let(ident: ident, e0: expr, e1: expr);
 
 type evalue
-  ErrorV(s: string)
   Bool(b: bool)
   Int(i: int)
   Char(c: char)
@@ -62,7 +61,6 @@ fun show(e: expr): div string
 
 fun show(v: evalue): div string
   match v
-    ErrorV(s) -> s
     Bool(b) -> b.show
     Int(i) -> i.show
     Char(c) -> c.show

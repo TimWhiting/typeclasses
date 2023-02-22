@@ -3,14 +3,14 @@ import utils
 import primitives
 import eval
 
-fun basicZero(x: evalue): pure bool
+fun basicZero(x: evalue): faildiv bool
   match x
     Bool(b) -> !b
     Int(0) -> True
     Int(_) -> False
-    _ -> throw("Unexpected value in if condiiton " ++ x.show)
+    _ -> fail("Unexpected value in if condition " ++ x.show)
 
-fun basicPrimOp(x: ident): pure primop<evalue>
+fun basicPrimOp(x: ident): faildiv primop<evalue>
   match x
     Ident("+") -> doAdd
     Ident("-") -> doNeg
@@ -22,7 +22,7 @@ fun basicPrimOp(x: ident): pure primop<evalue>
     Ident("fst") -> doFst
     Ident("snd") -> doSnd
     Ident("thd") -> doThd
-    _ -> throw("Primitive operation not implemented " ++ x.show)
+    _ -> fail("Primitive operation not implemented " ++ x.show)
 
 fun interpAbstraction(f)
   handle(f)
@@ -47,7 +47,13 @@ fun interpAbstraction(f)
     fun getClosure(v)
       v
 
+fun basicFail(f)
+  handle(f)
+    final ctl fail(x)
+      throw("Evaluation failed with exception:\n" ++ x)
+
 fun basicEval(xpr: expr): pure evalue
+  with basicFail
   with basicEnv
   with basicStore
   with interpAbstraction
@@ -57,7 +63,8 @@ fun basicEval(xpr: expr): pure evalue
   eval(xpr)
 
 fun traceEval(xpr: expr): pure string
-  var l := []
+  var l := []  
+  with basicFail
   with basicEnv
   with basicStore
   with interpAbstraction
@@ -69,19 +76,18 @@ fun traceEval(xpr: expr): pure string
 
 fun deadExprEval(xpr: expr): pure string
   var l: list<expr> := []
+  with handler
+    final ctl fail(x)
+      "Dead exprs in " ++ xpr.showLisp ++ ": result failure: " ++ x ++ "\n\t" ++ l.map(fn(xx) xx.showLisp).join("\n\t")
   with basicEnv
   with basicStore
   with interpAbstraction
-  val z = try(
-    {
-      handle({eval(xpr)})
+  with handler
         fun doSomething(x: expr)
           l := l.set-union(x.subexps, (==))
           l := l.set-remove(x, (==))
-    }, fn (y)
-      ErrorV(y.show)
-    )
-  "Dead exprs in " ++ xpr.showLisp ++ ": result: " ++ z.show ++ "\n\t" ++ l.map(fn(x) x.showLisp).join("\n\t")
+  val result:evalue = eval(xpr)
+  "Dead exprs in " ++ xpr.showLisp ++ ": result: " ++ result.show ++ "\n\t" ++ l.map(fn(x) x.showLisp).join("\n\t")
 
 
 fun tests()
@@ -89,7 +95,7 @@ fun tests()
   val eA = EVar(a)
   // Basic evaluation with a lambda
   App(Lam(a, App(eA, ETup([eChar('b'), eChar('b')]))), eEq).basicEval.show.println
-  
+
   //(* (+ 3 4) 9)
   App(eMult, ETup([App(eAdd, ETup([eInt(3), eInt(4)])), eInt(9)])).traceEval.println
 

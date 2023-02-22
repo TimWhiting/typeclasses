@@ -22,10 +22,6 @@ fun eVar(name: string): expr
 fun contains(l: list<a>, a: a, equal: (a,a) -> e bool): e bool
   l.foldl(False, fn(acc, x) x.equal(a) || acc)
 
-fun getBool(b: evalue): exn bool
-  match b
-    Bool(bl) -> bl
-    _ -> throw("Not a bool")
 
 fun upsert(e: list<(ident, int)>, x: ident, a: int): list<(ident, int)>
   val removed = e.filter(fn (xi) unsafe-total(fn() !(xi.fst == x)))
