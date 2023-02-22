@@ -82,3 +82,21 @@ fun deadExprEval(xpr: expr): pure string
       ErrorV(y.show)
     )
   "Dead exprs in " ++ xpr.showLisp ++ ": result: " ++ z.show ++ "\n\t" ++ l.map(fn(x) x.showLisp).join("\n\t")
+
+
+fun tests()
+  val a = Ident("a")
+  val eA = EVar(a)
+  // Basic evaluation with a lambda
+  App(Lam(a, App(eA, ETup([eChar('b'), eChar('b')]))), eEq).basicEval.show.println
+  
+  //(* (+ 3 4) 9)
+  App(eMult, ETup([App(eAdd, ETup([eInt(3), eInt(4)])), eInt(9)])).traceEval.println
+
+  // Dead expr 
+  If(eBool(False), eInt(1), eInt(2)).deadExprEval.println
+  Lam(Ident("x"), eVar("x")).deadExprEval.println
+  If(App(eDiv, ETup([eInt(1), eInt(0)])), eInt(2), eInt(3)).deadExprEval.println
+
+// fun main()
+//   tests()
