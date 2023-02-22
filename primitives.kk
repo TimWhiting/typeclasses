@@ -68,24 +68,29 @@ fun doNeg(v: evalue): failure evalue
     Int(i0) -> Int(0 - i0)
     Float(f0) -> Float(0.0 - f0)
     _ -> fail("Invalid argument to neg")
+fun doAddOne(v: evalue): failure evalue
+  match v
+    Int(i0) -> Int(i0 + 1)
+    _ -> fail("Invalid argument to add1")
   
-val eFst = PrimOp(Ident("fst"))
-val eSnd = PrimOp(Ident("snd"))
-val eThd = PrimOp(Ident("thd"))
-val eOr = PrimOp(Ident("||"))
-val eAnd = PrimOp(Ident("&&"))
-val eEq = PrimOp(Ident("=="))
-val eAdd = PrimOp(Ident("+"))
-val eMult = PrimOp(Ident("*"))
-val eNeg = PrimOp(Ident("-"))
-val eDiv = PrimOp(Ident("/"))
-val primExprs = [eFst, eSnd, eThd, eOr, eAnd, eEq, eAdd, eMult, eNeg, eDiv]
+val eFst = EVar(Ident("fst"))
+val eSnd = EVar(Ident("snd"))
+val eThd = EVar(Ident("thd"))
+val eOr = EVar(Ident("||"))
+val eAnd = EVar(Ident("&&"))
+val eEq = EVar(Ident("=="))
+val eAdd = EVar(Ident("+"))
+val eMult = EVar(Ident("*"))
+val eNeg = EVar(Ident("-"))
+val eDiv = EVar(Ident("/"))
+val eAddOne = EVar(Ident("add1"))
+val primExprs = [eFst, eSnd, eThd, eOr, eAnd, eEq, eAdd, eMult, eNeg, eDiv, eAddOne]
 
 fun lookupPrim(id2: ident): maybe<expr>
   with a <- primExprs.find
   match a
-    PrimOp(id) | id.name == id2.name -> True
+    EVar(id) | id.name == id2.name -> True
     _ -> False
-
+  
 fun tryfail(v: string, f: () -> <exn> a): <failure> a
   try(f, fn (_) fail(v))

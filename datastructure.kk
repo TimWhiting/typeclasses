@@ -14,7 +14,6 @@ type expr
   App(e0: expr, e1: expr)
   Lam(ident: ident, e: expr)
   If(e0: expr, e1: expr, e2: expr)
-  PrimOp(ident: ident)
   Let(ident: ident, e0: expr, e1: expr);
 
 type evalue
@@ -44,7 +43,6 @@ fun showLisp(e: expr): div string
     EVar(ident) -> ident.show
     App(e0, e1) -> "( " ++ e0.showLisp ++ " " ++ e1.showLisp ++ ")"
     Lam(ident, e0) -> "(\\" ++ ident.name ++ " " ++ e0.showLisp ++ ")"
-    PrimOp(ident) -> ident.name
     Let(ident, e0, e1) -> "(let (" ++ ident.name ++ " " ++ e0.showLisp ++ ") " ++ e1.showLisp ++ ")"
     If(e0, e1, e2) -> "(if " ++ e0.showLisp ++ " " ++ e1.showLisp ++ " " ++ e2.showLisp ++ ")"
 
@@ -55,7 +53,6 @@ fun show(e: expr): div string
     EVar(ident) -> ident.show 
     App(e0, e1) -> "\n(" ++ e0.show ++ " " ++ e1.show ++ ")" 
     Lam(ident, e0) -> "\n(\\" ++ ident.name ++ "." ++ e0.show ++ ")"
-    PrimOp(ident) -> "(Primitive " ++ ident.name ++ ")"
     Let(ident, e0, e1) -> "\n(let " ++ ident.show ++ " = " ++ e0.show ++ " in " ++ e1.show ++ ")"
     If(e0, e1, e2) -> "\n(if " ++ e0.show ++ " then " ++ e1.show ++ " else " ++ e2.show ++ ")"
 
@@ -128,7 +125,6 @@ fun (==)(e0: expr, e1: expr): div bool
     (App(e00, e01), App(e10, e11)) -> e00 == e10 && e01 == e11
     (Lam(i0, e00), Lam(i1, e10)) -> i0 == i1 && e00 == e10
     (If(e00, e01, e02), If(e10, e11, e12)) -> e00 == e10 && e01 == e11 && e02 == e12
-    (PrimOp(i0), PrimOp(i1)) -> i0 == i1
     (Let(i0, e00, e01), Let(i1, e10, e11)) -> i0 == i1 && e00 == e10 && e01 == e11
     _ -> False
 

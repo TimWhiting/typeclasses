@@ -45,16 +45,15 @@ fun eval(x: expr): <interp<int,v>> v
     ELit(CharL(v)) -> charV(v)
     ELit(BoolL(v)) -> boolV(v)
     ETup(v) -> tupleV(v.map(fn (vi) eval(vi)))
-    // Primitive operations
-    PrimOp(i) -> primClos(i)
     EVar(x1) -> 
       val e = askEnv()
       match e.getAddr(x1)
         Just(a) -> find(a)
-        Nothing ->
+        Nothing ->    
+          // Primitive operations
           match lookupPrim(x1)
-            Just(PrimOp(i)) -> primClos(i)
-            Nothing -> throw("Unbound variable " ++ x.show ++ " in environment " ++ e.show)
+            Just(EVar(i)) -> primClos(i)
+            _ -> throw("Unbound variable " ++ x.show ++ " in environment " ++ e.show)
     If(e0, e1, e2) ->
       val res = eval(e0)
       if !zero(res) then eval(e1) else eval(e2)
@@ -110,3 +109,8 @@ fun basicStore(f)
       ()
     fun askStore()
       store
+
+fun basicFail(f)
+  handle(f)
+    final ctl fail(x)
+      throw("Evaluation failed with exception:\n" ++ x)

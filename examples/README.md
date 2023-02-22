@@ -1,0 +1,1 @@
+Examples are borrowed / adapted from Abstracting definitional interpreters (functional pearl)

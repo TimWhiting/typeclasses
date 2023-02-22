@@ -2,7 +2,7 @@ import datastructure
 import utils
 import primitives
 import eval
-
+import parse
 fun basicZero(x: evalue): faildiv bool
   match x
     Bool(b) -> !b
@@ -22,6 +22,7 @@ fun basicPrimOp(x: ident): faildiv primop<evalue>
     Ident("fst") -> doFst
     Ident("snd") -> doSnd
     Ident("thd") -> doThd
+    Ident("add1") -> doAddOne
     _ -> fail("Primitive operation not implemented " ++ x.show)
 
 fun interpAbstraction(f)
@@ -47,11 +48,6 @@ fun interpAbstraction(f)
     fun getClosure(v)
       v
 
-fun basicFail(f)
-  handle(f)
-    final ctl fail(x)
-      throw("Evaluation failed with exception:\n" ++ x)
-
 fun basicEval(xpr: expr): pure evalue
   with basicFail
   with basicEnv
@@ -70,7 +66,7 @@ fun traceEval(xpr: expr): pure string
   with interpAbstraction
   with handler
     fun doSomething(x: expr)
-      l := Cons("Trace evaluation" ++ x.showLisp ++ " with " ++ askEnv().show ++ " and " ++ askStore().show, l)
+      l := Cons("Trace evaluation " ++ x.showLisp ++ " with " ++ askEnv().show ++ " and " ++ askStore().show, l)
   eval(xpr)
   l.join("\n")
 
@@ -78,7 +74,8 @@ fun deadExprEval(xpr: expr): pure string
   var l: list<expr> := []
   with handler
     final ctl fail(x)
-      "Dead exprs in " ++ xpr.showLisp ++ ": result failure: " ++ x ++ "\n\t" ++ l.map(fn(xx) xx.showLisp).join("\n\t")
+      if l.is-empty then "No dead expressions in " ++ xpr.showLisp else
+        "Dead exprs in " ++ xpr.showLisp ++ ": with result failure: " ++ x ++ "\n\t" ++ l.map(fn(xx) xx.showLisp).join("\n\t")
   with basicEnv
   with basicStore
   with interpAbstraction
@@ -87,7 +84,8 @@ fun deadExprEval(xpr: expr): pure string
           l := l.set-union(x.subexps, (==))
           l := l.set-remove(x, (==))
   val result:evalue = eval(xpr)
-  "Dead exprs in " ++ xpr.showLisp ++ ": result: " ++ result.show ++ "\n\t" ++ l.map(fn(x) x.showLisp).join("\n\t")
+  if l.is-empty then "No dead expressions in " ++ xpr.showLisp else
+    "Dead exprs in " ++ xpr.showLisp ++ ": with result: " ++ result.show ++ "\n\t" ++ l.map(fn(x) x.showLisp).join("\n\t")
 
 
 fun tests()
@@ -104,5 +102,12 @@ fun tests()
   Lam(Ident("x"), eVar("x")).deadExprEval.println
   If(App(eDiv, ETup([eInt(1), eInt(0)])), eInt(2), eInt(3)).deadExprEval.println
 
-// fun main()
+
+fun ptests()
+  parseOrEmpty("examples/dead-ex0.rkt").map fn(x) 
+    deadExprEval(x).println
+
+fun main()
 //   tests()
+  ptests()
+  ()

@@ -12,37 +12,38 @@ type abvalue
   PrimClos2(i: ident)
   Clos2(x: ident, e: expr, cenv: list<(ident, int)>)
 
-fun abstractOp(i: ident): pure primop<abvalue>
+fun abstractOp(i: ident): faildiv primop<abvalue>
   match i
     Ident("+") -> 
       fn(x)
         match x
           Tuple2([IntV(g1, v1), IntV(g2, v2)]) -> if g1 || g2 then IntV(True, 0) else IntV(False, v1 + v2)
-          _ -> throw("Invalid argument to +")
+          _ -> fail("Invalid argument to +")
     Ident("-") -> 
       fn(x)
         match x
           IntV(g1, v1) -> if g1 then IntV(True, 0) else IntV(False, 0 - v1)
-          _ -> throw("Invalid argument to -")
+          _ -> fail("Invalid argument to -")
     Ident("*") ->
       fn(x)
         match x
           Tuple2([IntV(g1, v1), IntV(g2, v2)]) -> if g1 || g2 then IntV(True, 0) else IntV(False, v1 * v2)
-          _ -> throw("Invalid argument to *")
+          _ -> fail("Invalid argument to *")
     Ident("/") -> 
       fn(x)
         match x
           Tuple2([IntV(g1, v1), IntV(g2, v2)]) -> if g1 || g2 then IntV(True, 0) else IntV(False, v1 / v2)
-          _ -> throw("Invalid argument to /")
+          _ -> fail("Invalid argument to /")
     Ident("==") -> fn(_) BoolV(True, False)
     Ident("||") -> fn(_) BoolV(True, False)
     Ident("&&") -> fn(_) BoolV(True, False)
     Ident("fst") -> doFst2
     Ident("snd") -> doSnd2
     Ident("thd") -> doThd2
-    _ -> throw("Primitive operation not implemented " ++ i.show)
+    _ -> fail("Primitive operation not implemented " ++ i.show)
 
 fun primExprAbstEval(xpr: expr): pure list<abvalue>
+  with basicFail
   with basicEnv
   with basicStore
   with handler
@@ -72,26 +73,26 @@ fun primExprAbstEval(xpr: expr): pure list<abvalue>
       v.closure
   eval(xpr)
 
-fun closure(v: abvalue): exn evalue
+fun closure(v: abvalue): failure evalue
   match v
     Clos2(x, e, cenv) -> Clos(x, e, cenv)
     PrimClos2(i) -> PrimClos(i)
-    _ -> throw("Invalid argument to closure")
+    _ -> fail("Invalid argument to closure")
 
-fun doFst2(v: abvalue): exn abvalue
+fun doFst2(v: abvalue): failure abvalue
   match v
     Tuple2(Cons(c0, _)) -> c0
-    _ -> throw("Invalid argument to fst")
+    _ -> fail("Invalid argument to fst")
 
-fun doSnd2(v: abvalue): exn abvalue
+fun doSnd2(v: abvalue): failure abvalue
   match v
     Tuple2(Cons(_, Cons(c1, _))) -> c1
-    _ -> throw("Invalid argument to snd")
+    _ -> fail("Invalid argument to snd")
 
-fun doThd2(v: abvalue): exn abvalue
+fun doThd2(v: abvalue): failure abvalue
   match v
     Tuple2(Cons(_, Cons(_, Cons(c2, _)))) -> c2
-    _ -> throw("Invalid argument to thd")
+    _ -> fail("Invalid argument to thd")
 
 fun show(v: abvalue): div string
   match v

@@ -39,7 +39,6 @@ fun subexps(e: expr): div list<expr>
     App(e1, e2) -> subexps(e1).set-union(subexps(e2),(==))
     Let(_, e1, e2) -> subexps(e1).set-union(subexps(e2),(==))
     If(e1, e2, e3) -> subexps(e1).set-union(subexps(e2),(==)).set-union(subexps(e3),(==))
-    PrimOp(_) -> []
   x.set-add(e, (==))
 
 fun set-add(l: list<x>, e: x, eq: (x, x) -> e bool): e list<x>
@@ -50,3 +49,7 @@ fun set-union(l: list<x>, l2: list<x>, eq: (x, x) -> e bool): e list<x>
 
 fun set-remove(l: list<x>, e: x, eq: (x, x) -> e bool): e list<x>
   l.filter(fn(e0) !eq(e0, e))
+
+fun traceP(a: a, show: a -> e string): e a
+  trace(a.show)
+  a
