@@ -51,25 +51,31 @@ fun doMult(v: evalue): exn evalue
         Just(Float(_)) -> x1.foldl(Float(1.0), fn(Float(a), Float(b)) Float(a * b))
         _ -> throw ("Invalid argument to mult")
     _ -> throw("Invalid argument to mult")
+fun doDiv(v: evalue): exn evalue
+  match v
+    Tuple([Int(i0), Int(i1)]) -> if i1 == 0 then ErrorV("Division by zero") else Int(i0 / i1)
+    Tuple([Float(f0), Float(f1)]) -> if f1 == 0.0 then ErrorV("Division by zero") else Float(f0 / f1)
+    _ -> throw("Invalid argument to mult")
 fun doNeg(v: evalue): exn evalue
   match v
     Int(i0) -> Int(0 - i0)
     Float(f0) -> Float(0.0 - f0)
     _ -> throw("Invalid argument to neg")
   
-val eFst = PrimOp(Ident("fst"), doFst)
-val eSnd = PrimOp(Ident("snd"), doSnd)
-val eThd = PrimOp(Ident("thd"), doThd)
-val eOr = PrimOp(Ident("||"), doOr)
-val eAnd = PrimOp(Ident("&&"), doAnd)
-val eEq = PrimOp(Ident("=="), doEq)
-val eAdd = PrimOp(Ident("+"), doAdd)
-val eMult = PrimOp(Ident("*"), doMult)
-val eNeg = PrimOp(Ident("-"), doNeg)
-val primExprs = [eFst, eSnd, eThd, eOr, eAnd, eEq, eAdd, eMult, eNeg]
+val eFst = PrimOp(Ident("fst"))
+val eSnd = PrimOp(Ident("snd"))
+val eThd = PrimOp(Ident("thd"))
+val eOr = PrimOp(Ident("||"))
+val eAnd = PrimOp(Ident("&&"))
+val eEq = PrimOp(Ident("=="))
+val eAdd = PrimOp(Ident("+"))
+val eMult = PrimOp(Ident("*"))
+val eNeg = PrimOp(Ident("-"))
+val eDiv = PrimOp(Ident("/"))
+val primExprs = [eFst, eSnd, eThd, eOr, eAnd, eEq, eAdd, eMult, eNeg, eDiv]
 
 fun lookupPrim(id2: ident): maybe<expr>
   with a <- primExprs.find
   match a
-    PrimOp(id, _) | id.name == id2.name -> True
+    PrimOp(id) | id.name == id2.name -> True
     _ -> False

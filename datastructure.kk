@@ -7,24 +7,25 @@ type literal
 struct ident
   name: string
 
-rec type expr
+type expr
   ELit(v: literal)
   ETup(e0: list<expr>)
   EVar(ident: ident)
   App(e0: expr, e1: expr)
   Lam(ident: ident, e: expr)
   If(e0: expr, e1: expr, e2: expr)
-  PrimOp(ident: ident, e: (evalue) -> exn evalue)
+  PrimOp(ident: ident)
   Let(ident: ident, e0: expr, e1: expr);
 
-rec type evalue
-  Bool(bb: bool)
+type evalue
+  ErrorV(s: string)
+  Bool(b: bool)
   Int(i: int)
   Char(c: char)
   Float(f: float64)
   Tuple(vals: list<evalue>)
   Clos(arg: ident, body: expr, env: list<(ident, int)>)
-  PrimClos(body: (evalue) -> exn evalue);
+  PrimClos(name: ident); 
 
 // Helper functions for stringifying datatypes
 fun show(v: literal): string
@@ -44,10 +45,9 @@ fun showLisp(e: expr): div string
     EVar(ident) -> ident.show
     App(e0, e1) -> "( " ++ e0.showLisp ++ " " ++ e1.showLisp ++ ")"
     Lam(ident, e0) -> "(\\" ++ ident.name ++ " " ++ e0.showLisp ++ ")"
-    PrimOp(ident, _) -> ident.name
+    PrimOp(ident) -> ident.name
     Let(ident, e0, e1) -> "(let (" ++ ident.name ++ " " ++ e0.showLisp ++ ") " ++ e1.showLisp ++ ")"
-    If(e0, e1, e2) -> "(if " ++ e0.showLisp ++ "\n\t(" ++ e1.showLisp ++ ")\n\t" ++ e2.showLisp ++ ")"
-
+    If(e0, e1, e2) -> "(if " ++ e0.showLisp ++ " " ++ e1.showLisp ++ " " ++ e2.showLisp ++ ")"
 
 fun show(e: expr): div string
   match e
@@ -56,12 +56,13 @@ fun show(e: expr): div string
     EVar(ident) -> ident.show 
     App(e0, e1) -> "\n(" ++ e0.show ++ " " ++ e1.show ++ ")" 
     Lam(ident, e0) -> "\n(\\" ++ ident.name ++ "." ++ e0.show ++ ")"
-    PrimOp(ident, _) -> "(Primitive " ++ ident.name ++ ")"
+    PrimOp(ident) -> "(Primitive " ++ ident.name ++ ")"
     Let(ident, e0, e1) -> "\n(let " ++ ident.show ++ " = " ++ e0.show ++ " in " ++ e1.show ++ ")"
     If(e0, e1, e2) -> "\n(if " ++ e0.show ++ " then " ++ e1.show ++ " else " ++ e2.show ++ ")"
 
 fun show(v: evalue): div string
   match v
+    ErrorV(s) -> s
     Bool(b) -> b.show
     Int(i) -> i.show
     Char(c) -> c.show
@@ -112,5 +113,25 @@ fun (==)(i1: ident, i2: ident): div bool
   match (i1, i2)
     (Ident(a), Ident(b)) -> 
       a == b
+
+fun (==)(l0: literal, l1: literal): bool
+  match (l0, l1)
+    (BoolL(b0), BoolL(b1)) -> b0 == b1
+    (IntL(i0), IntL(i1)) -> i0 == i1
+    (CharL(c0), CharL(c1)) -> c0 == c1
+    (FloatL(f0), FloatL(f1)) -> f0 == f1
+    (_, _) -> False
+
+fun (==)(e0: expr, e1: expr): div bool
+  match (e0, e1)
+    (ELit(l0), ELit(l1)) -> l0 == l1
+    (ETup(es0), ETup(es1)) -> es0.eq(es1, fn(a,b) a == b)
+    (EVar(i0), EVar(i1)) -> i0 == i1
+    (App(e00, e01), App(e10, e11)) -> e00 == e10 && e01 == e11
+    (Lam(i0, e00), Lam(i1, e10)) -> i0 == i1 && e00 == e10
+    (If(e00, e01, e02), If(e10, e11, e12)) -> e00 == e10 && e01 == e11 && e02 == e12
+    (PrimOp(i0), PrimOp(i1)) -> i0 == i1
+    (Let(i0, e00, e01), Let(i1, e10, e11)) -> i0 == i1 && e00 == e10 && e01 == e11
+    _ -> False
 
 

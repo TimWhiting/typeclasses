@@ -29,6 +29,11 @@ fun primitiveTests()
   //(* (+ 3 4) 9)
   App(eMult, ETup([App(eAdd, ETup([eInt(3), eInt(4)])), eInt(9)])).traceEval.println
 
+  // Dead expr 
+  If(eBool(False), eInt(1), eInt(2)).deadExprEval.println
+  Lam(Ident("x"), eVar("x")).deadExprEval.println
+  If(App(eDiv, ETup([eInt(1), eInt(0)])), eInt(2), eInt(3)).deadExprEval.println
+
 fun main()
   primitiveTests()
   ()
